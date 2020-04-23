@@ -26,22 +26,25 @@ namespace Zyg.PowerToys
             log.LogInformation("C# HTTP trigger function processed a request: " + req.QueryString.ToString());
 
             var fileUrl = req.Query["url"];
+            if (string.IsNullOrEmpty(fileUrl))
+                return new OkObjectResult(new { message = "Please provide url and name (optional) in query string." });
+
             var fileName = req.Query["name"];
             if (string.IsNullOrEmpty(fileName)) fileName = Path.GetFileName(fileUrl);
 
-            const int BUFFER_SIZE = 128 * 1024;
             using (var client = new WebClient())
             {
                 var sw = Stopwatch.StartNew();
                 using (var stream = await client.OpenReadTaskAsync(fileUrl))
                 {
-                    var buffer = new byte[BUFFER_SIZE];
-                    int bytesRead;
-                    var length = 0;
-
                     var blob = fileContainer.GetBlockBlobReference(fileName);
+                    var length = 0;
                     using (var blobStream = await blob.OpenWriteAsync())
                     {
+                        const int BUFFER_SIZE = 128 * 1024;
+                        var buffer = new byte[BUFFER_SIZE];
+                        int bytesRead;
+
                         do
                         {
                             bytesRead = await stream.ReadAsync(buffer, 0, BUFFER_SIZE);
