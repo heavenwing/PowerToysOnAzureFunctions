@@ -12,15 +12,19 @@ using System.Net.Http;
 using System.Net;
 using System.Timers;
 using System.Diagnostics;
+using Azure.Storage.Blobs.Specialized;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
 namespace Zyg.PowerToys
 {
     public static class Downloader
     {
         [FunctionName("Downloader")]
+        [StorageAccount("FilesStorage")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
-            [Blob("downloads", FileAccess.Write), StorageAccount("AzureWebJobsStorage")] CloudBlobContainer fileContainer,
+            [Blob("downloads", FileAccess.Write)] BlobContainerClient containerClient,
             ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request: " + req.QueryString.ToString());
@@ -32,30 +36,20 @@ namespace Zyg.PowerToys
             var fileName = req.Query["name"];
             if (string.IsNullOrEmpty(fileName)) fileName = Path.GetFileName(fileUrl);
 
-            using var client = new WebClient();
-            var sw = Stopwatch.StartNew();
-            await using var stream = await client.OpenReadTaskAsync(fileUrl);
-            var blob = fileContainer.GetBlockBlobReference(fileName);
-            var length = 0;
-            await using (var blobStream = await blob.OpenWriteAsync())
-            {
-                const int BUFFER_SIZE = 128 * 1024;
-                var buffer = new byte[BUFFER_SIZE];
-                int bytesRead;
+            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
 
-                do
-                {
-                    bytesRead = await stream.ReadAsync(buffer, 0, BUFFER_SIZE);
-                    length += bytesRead;
-                    await blobStream.WriteAsync(buffer, 0, bytesRead);
-                } while (bytesRead > 0);
-            }
-            stream.Close();
+            using var client = new HttpClient();
+            var sw = Stopwatch.StartNew();
+            await using var fileStream = await client.GetStreamAsync(fileUrl);
+            var blobCient = containerClient.GetBlobClient(fileName);
+            var length = 0;
+            await blobCient.UploadAsync(fileStream);
+            fileStream.Close();
 
             sw.Stop();
             return new OkObjectResult(new
             {
-                url = blob.Uri.AbsoluteUri,
+                url = blobCient.Uri.AbsoluteUri,
                 size = length,
                 time = sw.ElapsedMilliseconds / 1000
             });

@@ -5,7 +5,7 @@ Some tools built on Azure Functions, include:
 
 ## Built from source
 
-1. Install Visual Studio 2019 with Azure development workload
+1. Install Visual Studio 2022 with Azure development workload
 
 2. Get source code
 ``` bash
@@ -18,12 +18,13 @@ git clone https://github.com/heavenwing/PowerToysOnAzureFunctions
     "IsEncrypted": false,
     "Values": {
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FileStorage": "UseDevelopmentStorage=true",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet"
     }
 }
 ```
 
-4. Open solution with VS2019, run it locally or publish it into your Azure subscription
+4. Open solution with VS2022, run it locally or publish it into your Azure subscription
 
 ## Tools List
 
